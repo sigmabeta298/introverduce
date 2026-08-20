@@ -1,0 +1,27 @@
+:root {
+	--color-burgundy: #4a2028;
+	--color-cream: #f2ede5;
+	--color-taupe: #b5a89a;
+	--color-charcoal: #292625;
+
+	--color-background: var(--color-cream);
+	--color-surface: #ffffff;
+	--color-text: var(--color-charcoal);
+	--color-primary: var(--color-burgundy);
+	--color-secondary: var(--color-taupe);
+
+	font-family:
+		Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+	background: var(--color-background);
+	color: var(--color-text);
+}
+
+body {
+	min-width: 320px;
+}
