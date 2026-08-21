@@ -1,113 +1,61 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import QRCode from 'qrcode';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
-	import { getPersona, updatePersona, deletePersona } from '$lib/db/personas';
-	import type { Persona, PersonaSection } from '$lib/db/types';
+	import { getPersona } from '$lib/db/personas';
+	import { getProfile } from '$lib/db/profile';
+	import type { Persona, Profile } from '$lib/db/types';
 
 	let persona = $state<Persona | null>(null);
+	let profile = $state<Profile | null>(null);
 	let loading = $state(true);
-	let saved = $state(false);
-	let saving = $state(false);
+	let qrCode = $state('');
+	let qrLoading = $state(true);
 
 	onMount(async () => {
 		const personaId = page.params.id;
 
 		if (!personaId) {
 			loading = false;
+			qrLoading = false;
 			return;
 		}
 
-		persona = (await getPersona(personaId)) ?? null;
+		const [loadedPersona, loadedProfile] = await Promise.all([
+			getPersona(personaId),
+			getProfile()
+		]);
+
+		persona = loadedPersona ?? null;
+		profile = loadedProfile ?? null;
 		loading = false;
+
+		if (loadedPersona) {
+			const presentationUrl = `${window.location.origin}/persona/${loadedPersona.id}`;
+
+			try {
+				qrCode = await QRCode.toDataURL(presentationUrl, {
+					width: 240,
+					margin: 2
+				});
+			} catch (error) {
+				console.error('Failed to generate QR code:', error);
+			}
+		}
+
+		qrLoading = false;
 	});
-
-	function addSection() {
-		if (!persona) return;
-
-		const section: PersonaSection = {
-			id: crypto.randomUUID(),
-			title: '',
-			value: '',
-			order: persona.sections.length
-		};
-
-		persona.sections = [...persona.sections, section];
-	}
-
-	function removeSection(id: string) {
-		if (!persona) return;
-
-		persona.sections = persona.sections
-			.filter((section) => section.id !== id)
-			.map((section, index) => ({
-				...section,
-				order: index
-			}));
-	}
-
-	function moveSection(id: string, direction: 'up' | 'down') {
-		if (!persona) return;
-
-		const sections = [...persona.sections];
-		const currentIndex = sections.findIndex((section) => section.id === id);
-
-		if (currentIndex === -1) return;
-
-		const targetIndex =
-			direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-
-		if (targetIndex < 0 || targetIndex >= sections.length) return;
-
-		[sections[currentIndex], sections[targetIndex]] = [
-			sections[targetIndex],
-			sections[currentIndex]
-		];
-
-		persona.sections = sections.map((section, index) => ({
-			...section,
-			order: index
-		}));
-	}
-
-	async function save() {
-		if (!persona) return;
-
-		saving = true;
-		saved = false;
-
-		const updatedPersona: Persona = {
-			...$state.snapshot(persona),
-			sections: persona.sections.map((section, index) => ({
-				...section,
-				order: index
-			})),
-			updatedAt: Date.now()
-		};
-
-		await updatePersona(updatedPersona);
-
-		persona = updatedPersona;
-		saving = false;
-		saved = true;
-
-		setTimeout(() => {
-			saved = false;
-		}, 2000);
-	}
-
-	async function remove() {
-		if (!persona) return;
-
-		await deletePersona(persona.id);
-		await goto('/');
-	}
 </script>
 
 <svelte:head>
 	<title>
 		{persona ? `${persona.name} · IntroVerDuce` : 'Persona · IntroVerDuce'}
 	</title>
+	<meta
+		name="description"
+		content="A personal introduction by IntroVerDuce."
+	/>
 </svelte:head>
 
 <div class="app">
@@ -115,10 +63,18 @@
 		<p class="loading">Loading...</p>
 	{:else if persona}
 		<header>
-			<p class="eyebrow">PERSONA</p>
-			<h1>{persona.name}</h1>
+			<div>
+				<p class="eyebrow">INTROVERDUCE</p>
+				<h1>{persona.name}</h1>
+
+				{#if persona.description}
+					<p class="description">{persona.description}</p>
+				{/if}
+			</div>
+
 			<button
 				class="icon-button"
+				type="button"
 				aria-label="Home"
 				title="Home"
 				onclick={() => goto('/')}
@@ -128,121 +84,106 @@
 					fill="currentColor"
 					aria-hidden="true"
 				>
-					<path d="M3.5 11.2 12 4l8.5 7.2v8.3a1 1 0 0 1-1 1h-5v-5.5h-5V20.5h-5a1 1 0 0 1-1-1v-8.3Z" />
+					<path
+						d="M3.5 11.2 12 4l8.5 7.2v8.3a1 1 0 0 1-1 1h-5v-5.5h-5v5.5h-5a1 1 0 0 1-1-1v-8.3Z"
+					/>
 				</svg>
 			</button>
 		</header>
 
 		<main>
-			<section class="form-card">
-				<label>
-					<span>Name</span>
-					<input bind:value={persona.name} />
-				</label>
+			{#if profile}
+				<section class="profile-card">
+					<p class="eyebrow">ABOUT</p>
 
-				<label>
-					<span>Description</span>
-					<textarea bind:value={persona.description}></textarea>
-				</label>
-			</section>
+					<h2>{profile.name}</h2>
 
-			<section class="sections-card">
-				<div class="section-header">
-					<div>
-						<p class="eyebrow">PERSONA DETAILS</p>
-						<h2>Sections</h2>
+					{#if profile.location}
+						<p class="profile-detail">{profile.location}</p>
+					{/if}
+
+					<div class="contact">
+						{#if profile.contact.email}
+							<a href={`mailto:${profile.contact.email}`}>
+								{profile.contact.email}
+							</a>
+						{/if}
+
+						{#if profile.contact.phone}
+							<a href={`tel:${profile.contact.phone}`}>
+								{profile.contact.phone}
+							</a>
+						{/if}
+
+						{#if profile.contact.website}
+							<a
+								href={profile.contact.website}
+								target="_blank"
+								rel="noreferrer"
+							>
+								{profile.contact.website}
+							</a>
+						{/if}
 					</div>
+				</section>
+			{/if}
 
-					<button
-						class="add-section-button"
-						type="button"
-						onclick={addSection}
-					>
-						+ Add
-					</button>
-				</div>
+			{#if persona.sections.length > 0}
+				<section class="persona-details">
+					<p class="eyebrow">ABOUT THIS PERSONA</p>
 
-				{#if persona.sections.length === 0}
-					<p class="empty-message">
-						No sections yet. Add one to start building this persona.
-					</p>
-				{:else}
 					<div class="sections">
-						{#each persona.sections as section, index}
-							<div class="section">
-								<div class="section-title-row">
-									<h3>Section {index + 1}</h3>
+						{#each persona.sections as section}
+							<section class="section">
+								{#if section.title}
+									<h2>{section.title}</h2>
+								{/if}
 
-									<div class="section-actions">
-										<button
-											type="button"
-											aria-label="Move section up"
-											disabled={index === 0}
-											onclick={() => moveSection(section.id, 'up')}
-										>
-											↑
-										</button>
-
-										<button
-											type="button"
-											aria-label="Move section down"
-											disabled={index === persona.sections.length - 1}
-											onclick={() => moveSection(section.id, 'down')}
-										>
-											↓
-										</button>
-
-										<button
-											type="button"
-											class="remove-button"
-											onclick={() => removeSection(section.id)}
-										>
-											Remove
-										</button>
-									</div>
-								</div>
-
-								<label>
-									<span>Heading</span>
-									<input
-										bind:value={section.title}
-										placeholder="e.g. Company, Hobbies, Tech Stack"
-									/>
-								</label>
-
-								<label>
-									<span>Content</span>
-									<textarea
-										bind:value={section.value}
-										placeholder="Add the information..."
-									></textarea>
-								</label>
-							</div>
+								{#if section.value}
+									<p>{section.value}</p>
+								{/if}
+							</section>
 						{/each}
 					</div>
+				</section>
+			{/if}
+
+			<section class="qr-card">
+				<p class="eyebrow">SHARE THIS INTRODUCTION</p>
+
+				<h2>Scan to view</h2>
+
+				<p class="qr-description">
+					Scan this QR code to open this introduction.
+				</p>
+
+				{#if qrLoading}
+					<p class="qr-loading">Generating QR code...</p>
+				{:else if qrCode}
+					<div class="qr-wrapper">
+						<img
+							src={qrCode}
+							alt={`QR code for ${persona.name}`}
+						/>
+					</div>
+				{:else}
+					<p class="qr-error">Unable to generate QR code.</p>
 				{/if}
 			</section>
 
-			<button
-				class="save-button"
-				type="button"
-				onclick={save}
-				disabled={saving}
-			>
-				{saving ? 'Saving...' : 'Save Changes'}
-			</button>
-
-			{#if saved}
-				<p class="saved-message">Saved.</p>
-			{/if}
-
-			<button class="delete-button" type="button" onclick={remove}>
-				Delete Persona
-			</button>
 		</main>
 	{:else}
-		<h1>Persona not found</h1>
-		<a href="/">Back to personas</a>
+		<div class="not-found">
+			<h1>Persona not found</h1>
+
+			<button
+				class="back-button"
+				type="button"
+				onclick={() => goto('/')}
+			>
+				Back to Home
+			</button>
+		</div>
 	{/if}
 </div>
 
@@ -266,7 +207,7 @@
 		grid-template-columns: 1fr auto;
 		align-items: start;
 		column-gap: 1rem;
-		margin-bottom: 2rem;
+		margin-bottom: 2.5rem;
 	}
 
 	.eyebrow {
@@ -280,82 +221,62 @@
 	h1 {
 		margin: 0;
 		color: var(--color-primary);
-		font-size: 2rem;
+		font-size: 2.2rem;
+		line-height: 1.1;
+	}
+
+	.description {
+		margin: 0.8rem 0 0;
+		color: var(--color-text);
+		font-size: 1rem;
+		line-height: 1.5;
 	}
 
 	main {
 		display: grid;
-		gap: 1rem;
+		gap: 1.25rem;
 	}
 
-	.form-card,
-	.sections-card {
+	.profile-card,
+	.persona-details {
 		padding: 1.5rem;
 		border: 1px solid var(--color-secondary);
 		border-radius: 1rem;
 		background: var(--color-surface);
 	}
 
-	.form-card {
-		display: grid;
-		gap: 1rem;
-	}
-
-	label {
-		display: grid;
-		gap: 0.4rem;
-	}
-
-	label span {
-		font-size: 0.82rem;
-		font-weight: 600;
-	}
-
-	input,
-	textarea {
-		width: 100%;
-		padding: 0.8rem 0.9rem;
-		box-sizing: border-box;
-		border: 1px solid var(--color-secondary);
-		border-radius: 0.65rem;
-		background: var(--color-cream);
-		color: var(--color-text);
-		font: inherit;
-	}
-
-	textarea {
-		min-height: 100px;
-		resize: vertical;
-	}
-
-	.section-header {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 1rem;
-		margin-bottom: 1.5rem;
-	}
-
-	.section-header .eyebrow {
-		margin-bottom: 0.35rem;
-	}
-
-	.section-header h2 {
+	.profile-card h2 {
 		margin: 0;
-		font-size: 1.2rem;
+		color: var(--color-primary);
+		font-size: 1.35rem;
 	}
 
-	.add-section-button {
-		flex-shrink: 0;
-		padding: 0.6rem 0.9rem;
-		border: 1px solid var(--color-secondary);
-		border-radius: 999px;
-		background: var(--color-cream);
+	.profile-detail {
+		margin: 0.4rem 0 0;
+		font-size: 0.95rem;
+	}
+
+	.contact {
+		display: grid;
+		gap: 0.35rem;
+		margin-top: 1rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--color-secondary);
+	}
+
+	.contact a {
 		color: var(--color-primary);
-		font: inherit;
-		font-size: 0.85rem;
-		font-weight: 600;
-		cursor: pointer;
+		font-size: 0.88rem;
+		text-decoration: none;
+		overflow-wrap: anywhere;
+	}
+
+	.contact a:hover {
+		text-decoration: underline;
+	}
+
+	.persona-details > .eyebrow {
+		margin-bottom: 1.25rem;
 	}
 
 	.sections {
@@ -364,8 +285,6 @@
 	}
 
 	.section {
-		display: grid;
-		gap: 1rem;
 		padding-top: 1.25rem;
 		border-top: 1px solid var(--color-secondary);
 	}
@@ -375,102 +294,18 @@
 		border-top: 0;
 	}
 
-	.section-title-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 1rem;
+	.section h2 {
+		margin: 0 0 0.5rem;
+		color: var(--color-primary);
+		font-size: 1.05rem;
 	}
 
-	.section-title-row h3 {
+	.section p {
 		margin: 0;
-		font-size: 0.9rem;
-		color: var(--color-primary);
+		line-height: 1.6;
+		white-space: pre-wrap;
 	}
 
-	.section-actions {
-		display: flex;
-		align-items: center;
-		gap: 0.35rem;
-	}
-
-	.section-actions button {
-		padding: 0.35rem 0.55rem;
-		border: 1px solid var(--color-secondary);
-		border-radius: 0.5rem;
-		background: transparent;
-		color: var(--color-text);
-		font: inherit;
-		font-size: 0.8rem;
-		cursor: pointer;
-	}
-
-	.section-actions button:disabled {
-		opacity: 0.35;
-		cursor: default;
-	}
-
-	.section-actions .remove-button {
-		color: var(--color-primary);
-	}
-
-	.empty-message {
-		margin: 0;
-		font-size: 0.9rem;
-		line-height: 1.5;
-	}
-
-	.save-button,
-	.delete-button {
-		width: 100%;
-		padding: 1rem;
-		border-radius: 999px;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.save-button {
-		border: 0;
-		background: var(--color-primary);
-		color: var(--color-cream);
-	}
-
-	.save-button:disabled {
-		opacity: 0.6;
-		cursor: default;
-	}
-
-	.saved-message {
-		margin: -0.5rem 0 0;
-		text-align: center;
-		color: var(--color-primary);
-		font-size: 0.85rem;
-	}
-
-	.delete-button {
-		border: 1px solid var(--color-secondary);
-		background: transparent;
-		color: var(--color-text);
-	}
-
-	@media (max-width: 480px) {
-		.section-header,
-		.section-title-row {
-			align-items: stretch;
-			flex-direction: column;
-		}
-
-		.add-section-button {
-			width: 100%;
-		}
-
-		.section-actions {
-			justify-content: flex-start;
-		}
-	}
-
-	
 	.icon-button {
 		display: grid;
 		width: 2.75rem;
@@ -506,5 +341,74 @@
 	.icon-button svg {
 		width: 1.5rem;
 		height: 1.5rem;
+	}
+
+	.not-found {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.not-found h1 {
+		font-size: 1.5rem;
+	}
+
+	.back-button {
+		padding: 1rem;
+		border: 0;
+		border-radius: 999px;
+		background: var(--color-primary);
+		color: var(--color-cream);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.qr-card {
+		display: grid;
+		justify-items: center;
+		padding: 1.5rem;
+		border: 1px solid var(--color-secondary);
+		border-radius: 1rem;
+		background: var(--color-surface);
+		text-align: center;
+	}
+
+	.qr-card .eyebrow {
+		margin-bottom: 0.5rem;
+	}
+
+	.qr-card h2 {
+		margin: 0;
+		color: var(--color-primary);
+		font-size: 1.15rem;
+	}
+
+	.qr-description {
+		margin: 0.4rem 0 1.25rem;
+		font-size: 0.85rem;
+		line-height: 1.4;
+	}
+
+	.qr-wrapper {
+		padding: 0.75rem;
+		border-radius: 0.75rem;
+		background: white;
+	}
+
+	.qr-wrapper img {
+		display: block;
+		width: 240px;
+		height: 240px;
+		max-width: 100%;
+	}
+
+	.qr-loading,
+	.qr-error {
+		margin: 0;
+		font-size: 0.85rem;
+	}
+
+	.qr-error {
+		color: var(--color-primary);
 	}
 </style>

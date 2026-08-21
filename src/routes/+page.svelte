@@ -58,16 +58,63 @@
 
 			<div class="personas">
 				{#each personas as persona}
-					<button
-						class="persona-card"
-						onclick={() => goto(`/persona/${persona.id}`)}
-					>
-						<span class="persona-name">{persona.name}</span>
+					<div class="persona-card">
+						<button
+							class="persona-content"
+							type="button"
+							onclick={() => goto(`/persona/${persona.id}/edit`)}
+						>
+							<span class="persona-name">{persona.name}</span>
 
-						{#if persona.description}
-							<span class="persona-description">{persona.description}</span>
-						{/if}
-					</button>
+							{#if persona.description}
+								<span class="persona-description">{persona.description}</span>
+							{/if}
+						</button>
+
+						<div class="persona-actions">
+							<button
+								class="icon-button"
+								type="button"
+								aria-label={`Present ${persona.name}`}
+								title="Present"
+								onclick={() => goto(`/persona/${persona.id}`)}
+							>
+								<svg
+									viewBox="0 0 24 24"
+									fill="currentColor"
+									aria-hidden="true"
+								>
+									<path
+										d="M8 5.5v13l10-6.5-10-6.5Z"
+									/>
+								</svg>
+							</button>
+
+							<button
+								class="icon-button"
+								type="button"
+								aria-label={`Share ${persona.name}`}
+								title="Share"
+								onclick={() => {}}
+							>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.8"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<circle cx="18" cy="5" r="2.5" />
+									<circle cx="6" cy="12" r="2.5" />
+									<circle cx="18" cy="19" r="2.5" />
+									<path d="m8.2 10.8 7.6-4.4" />
+									<path d="m8.2 13.2 7.6 4.4" />
+								</svg>
+							</button>
+						</div>
+					</div>
 				{/each}
 			</div>
 
@@ -154,17 +201,35 @@
 
 	.persona-card {
 		display: flex;
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 0.5rem;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
 		width: 100%;
-		padding: 1.5rem;
+		padding: 0.75rem;
+		box-sizing: border-box;
 		border: 1px solid var(--color-secondary);
 		border-radius: 1rem;
 		background: var(--color-surface);
+	}
+
+	.persona-content {
+		display: flex;
+		flex: 1;
+		min-width: 0;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.5rem;
+		padding: 0.75rem;
+		border: 0;
+		background: transparent;
 		color: var(--color-text);
 		text-align: left;
+		font: inherit;
 		cursor: pointer;
+	}
+
+	.persona-content:hover .persona-name {
+		text-decoration: underline;
 	}
 
 	.persona-name {
@@ -175,6 +240,52 @@
 
 	.persona-description {
 		font-size: 0.9rem;
+		line-height: 1.4;
+	}
+
+	.persona-actions {
+		display: flex;
+		flex-shrink: 0;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.icon-button {
+		display: grid;
+		width: 2.75rem;
+		height: 2.75rem;
+		padding: 0.6rem;
+		place-items: center;
+		box-sizing: border-box;
+		border: 1px solid var(--color-secondary);
+		border-radius: 50%;
+		background: var(--color-cream);
+		color: var(--color-primary);
+		cursor: pointer;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease,
+			transform 0.15s ease;
+	}
+
+	.icon-button:hover {
+		background: var(--color-primary);
+		color: var(--color-cream);
+		transform: translateY(-1px);
+	}
+
+	.icon-button:active {
+		transform: translateY(0);
+	}
+
+	.icon-button:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 3px;
+	}
+
+	.icon-button svg {
+		width: 1.35rem;
+		height: 1.35rem;
 	}
 
 	.add-persona {
