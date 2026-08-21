@@ -1,14 +1,32 @@
 <script lang="ts">
-	const personas = [
-		{
-			name: 'Alter Ego 1',
-			description: 'The nerdy coffee freak'
-		},
-		{
-			name: 'Alter Ego 2',
-			description: 'The dog loving bassist'
-		}
-	];
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { getAllPersonas, createPersona } from '$lib/db/personas';
+	import type { Persona } from '$lib/db/types';
+
+	let personas = $state<Persona[]>([]);
+
+	onMount(async () => {
+		personas = await getAllPersonas();
+	});
+
+	async function addPersona() {
+		const now = Date.now();
+
+		const persona: Persona = {
+			id: crypto.randomUUID(),
+			name: 'Alter Ego Architect',
+			description: 'The nerdy coffee freak',
+			order: personas.length,
+			sections: [],
+			createdAt: now,
+			updatedAt: now
+		};
+
+		await createPersona(persona);
+
+		personas = [...personas, persona];
+	}
 </script>
 
 <svelte:head>
@@ -29,14 +47,22 @@
 
 		<div class="personas">
 			{#each personas as persona}
-				<button class="persona-card">
+				<button
+					class="persona-card"
+					onclick={() => goto(`/persona/${persona.id}`)}
+				>
 					<span class="persona-name">{persona.name}</span>
-					<span class="persona-description">{persona.description}</span>
+
+					{#if persona.description}
+						<span class="persona-description">{persona.description}</span>
+					{/if}
 				</button>
 			{/each}
 		</div>
 
-		<button class="add-persona">+ Add Persona</button>
+		<button class="add-persona" onclick={addPersona}>
+			+ Add Persona
+		</button>
 	</main>
 </div>
 
