@@ -8,6 +8,7 @@
 	let persona = $state<Persona | null>(null);
 	let loading = $state(true);
 	let saved = $state(false);
+	let saving = $state(false);
 
 	onMount(async () => {
 		const personaId = page.params.id;
@@ -21,43 +22,85 @@
 		loading = false;
 	});
 
+	function addSection() {
+		if (!persona) return;
+
+		const section: PersonaSection = {
+			id: crypto.randomUUID(),
+			title: '',
+			value: '',
+			order: persona.sections.length
+		};
+
+		persona.sections = [...persona.sections, section];
+	}
+
+	function removeSection(id: string) {
+		if (!persona) return;
+
+		persona.sections = persona.sections
+			.filter((section) => section.id !== id)
+			.map((section, index) => ({
+				...section,
+				order: index
+			}));
+	}
+
+	function moveSection(id: string, direction: 'up' | 'down') {
+		if (!persona) return;
+
+		const sections = [...persona.sections];
+		const currentIndex = sections.findIndex((section) => section.id === id);
+
+		if (currentIndex === -1) return;
+
+		const targetIndex =
+			direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+		if (targetIndex < 0 || targetIndex >= sections.length) return;
+
+		[sections[currentIndex], sections[targetIndex]] = [
+			sections[targetIndex],
+			sections[currentIndex]
+		];
+
+		persona.sections = sections.map((section, index) => ({
+			...section,
+			order: index
+		}));
+	}
+
 	async function save() {
-        if (!persona) return;
+		if (!persona) return;
 
-        const updatedPersona: Persona = {
-            ...$state.snapshot(persona),
-            updatedAt: Date.now()
-        };
+		saving = true;
+		saved = false;
 
-        await updatePersona(updatedPersona);
+		const updatedPersona: Persona = {
+			...$state.snapshot(persona),
+			sections: persona.sections.map((section, index) => ({
+				...section,
+				order: index
+			})),
+			updatedAt: Date.now()
+		};
 
-        persona = updatedPersona;
+		await updatePersona(updatedPersona);
 
-        saved = true;
+		persona = updatedPersona;
+		saving = false;
+		saved = true;
 
-        setTimeout(() => {
-            saved = false;
-        }, 2000);
-    }
+		setTimeout(() => {
+			saved = false;
+		}, 2000);
+	}
 
 	async function remove() {
 		if (!persona) return;
 
 		await deletePersona(persona.id);
 		await goto('/');
-	}
-
-	function addSection() {
-		if (!persona) return;
-
-		const section: PersonaSection = {
-			id: crypto.randomUUID(),
-			title: 'New Section',
-			value: '',
-			order: persona.sections.length
-		};
-
-		persona.sections = [...persona.sections, section];
 	}
 </script>
 
@@ -69,7 +112,7 @@
 
 <div class="app">
 	{#if loading}
-		<p>Loading...</p>
+		<p class="loading">Loading...</p>
 	{:else if persona}
 		<header>
 			<p class="eyebrow">PERSONA</p>
@@ -96,7 +139,11 @@
 						<h2>Sections</h2>
 					</div>
 
-					<button class="add-section-button" onclick={addSection}>
+					<button
+						class="add-section-button"
+						type="button"
+						onclick={addSection}
+					>
 						+ Add
 					</button>
 				</div>
@@ -107,16 +154,54 @@
 					</p>
 				{:else}
 					<div class="sections">
-						{#each persona.sections as section}
+						{#each persona.sections as section, index}
 							<div class="section">
+								<div class="section-title-row">
+									<h3>Section {index + 1}</h3>
+
+									<div class="section-actions">
+										<button
+											type="button"
+											aria-label="Move section up"
+											disabled={index === 0}
+											onclick={() => moveSection(section.id, 'up')}
+										>
+											↑
+										</button>
+
+										<button
+											type="button"
+											aria-label="Move section down"
+											disabled={index === persona.sections.length - 1}
+											onclick={() => moveSection(section.id, 'down')}
+										>
+											↓
+										</button>
+
+										<button
+											type="button"
+											class="remove-button"
+											onclick={() => removeSection(section.id)}
+										>
+											Remove
+										</button>
+									</div>
+								</div>
+
 								<label>
 									<span>Heading</span>
-									<input bind:value={section.title} />
+									<input
+										bind:value={section.title}
+										placeholder="e.g. Company, Hobbies, Tech Stack"
+									/>
 								</label>
 
 								<label>
 									<span>Content</span>
-									<textarea bind:value={section.value}></textarea>
+									<textarea
+										bind:value={section.value}
+										placeholder="Add the information..."
+									></textarea>
 								</label>
 							</div>
 						{/each}
@@ -124,14 +209,20 @@
 				{/if}
 			</section>
 
-			<button class="save-button" onclick={save}>
-				Save Changes
+			<button
+				class="save-button"
+				type="button"
+				onclick={save}
+				disabled={saving}
+			>
+				{saving ? 'Saving...' : 'Save Changes'}
 			</button>
-            {#if saved}
-                <p class="saved-message">Saved.</p>
-            {/if}
 
-			<button class="delete-button" onclick={remove}>
+			{#if saved}
+				<p class="saved-message">Saved.</p>
+			{/if}
+
+			<button class="delete-button" type="button" onclick={remove}>
 				Delete Persona
 			</button>
 		</main>
@@ -148,6 +239,12 @@
 		margin: 0 auto;
 		padding: 2rem 1.25rem 3rem;
 		box-sizing: border-box;
+	}
+
+	.loading {
+		margin: 0;
+		padding-top: 2rem;
+		text-align: center;
 	}
 
 	header {
@@ -173,13 +270,17 @@
 		gap: 1rem;
 	}
 
-	.form-card {
-		display: grid;
-		gap: 1rem;
+	.form-card,
+	.sections-card {
 		padding: 1.5rem;
 		border: 1px solid var(--color-secondary);
 		border-radius: 1rem;
 		background: var(--color-surface);
+	}
+
+	.form-card {
+		display: grid;
+		gap: 1rem;
 	}
 
 	label {
@@ -209,47 +310,16 @@
 		resize: vertical;
 	}
 
-	.save-button,
-	.delete-button {
-		width: 100%;
-		padding: 1rem;
-		border-radius: 999px;
-		font: inherit;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.save-button {
-		border: 0;
-		background: var(--color-primary);
-		color: var(--color-cream);
-	}
-
-	.delete-button {
-		border: 1px solid var(--color-secondary);
-		background: transparent;
-		color: var(--color-text);
-	}
-    .saved-message {
-        margin: -0.5rem 0 0;
-        text-align: center;
-        color: var(--color-primary);
-        font-size: 0.85rem;
-    }
-
-	.sections-card {
-		padding: 1.5rem;
-		border: 1px solid var(--color-secondary);
-		border-radius: 1rem;
-		background: var(--color-surface);
-	}
-
 	.section-header {
 		display: flex;
-		align-items: center;
+		align-items: flex-start;
 		justify-content: space-between;
 		gap: 1rem;
 		margin-bottom: 1.5rem;
+	}
+
+	.section-header .eyebrow {
+		margin-bottom: 0.35rem;
 	}
 
 	.section-header h2 {
@@ -258,6 +328,7 @@
 	}
 
 	.add-section-button {
+		flex-shrink: 0;
 		padding: 0.6rem 0.9rem;
 		border: 1px solid var(--color-secondary);
 		border-radius: 999px;
@@ -281,8 +352,103 @@
 		border-top: 1px solid var(--color-secondary);
 	}
 
+	.section:first-child {
+		padding-top: 0;
+		border-top: 0;
+	}
+
+	.section-title-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.section-title-row h3 {
+		margin: 0;
+		font-size: 0.9rem;
+		color: var(--color-primary);
+	}
+
+	.section-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.35rem;
+	}
+
+	.section-actions button {
+		padding: 0.35rem 0.55rem;
+		border: 1px solid var(--color-secondary);
+		border-radius: 0.5rem;
+		background: transparent;
+		color: var(--color-text);
+		font: inherit;
+		font-size: 0.8rem;
+		cursor: pointer;
+	}
+
+	.section-actions button:disabled {
+		opacity: 0.35;
+		cursor: default;
+	}
+
+	.section-actions .remove-button {
+		color: var(--color-primary);
+	}
+
 	.empty-message {
 		margin: 0;
 		font-size: 0.9rem;
+		line-height: 1.5;
+	}
+
+	.save-button,
+	.delete-button {
+		width: 100%;
+		padding: 1rem;
+		border-radius: 999px;
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.save-button {
+		border: 0;
+		background: var(--color-primary);
+		color: var(--color-cream);
+	}
+
+	.save-button:disabled {
+		opacity: 0.6;
+		cursor: default;
+	}
+
+	.saved-message {
+		margin: -0.5rem 0 0;
+		text-align: center;
+		color: var(--color-primary);
+		font-size: 0.85rem;
+	}
+
+	.delete-button {
+		border: 1px solid var(--color-secondary);
+		background: transparent;
+		color: var(--color-text);
+	}
+
+	@media (max-width: 480px) {
+		.section-header,
+		.section-title-row {
+			align-items: stretch;
+			flex-direction: column;
+		}
+
+		.add-section-button {
+			width: 100%;
+		}
+
+		.section-actions {
+			justify-content: flex-start;
+		}
 	}
 </style>

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { getAllPersonas, createPersona } from '$lib/db/personas';
+	import { getAllPersonas } from '$lib/db/personas';
 	import { getProfile } from '$lib/db/profile';
 	import type { Persona } from '$lib/db/types';
 
@@ -20,23 +20,6 @@
 		loading = false;
 	});
 
-	async function addPersona() {
-		const now = Date.now();
-
-		const persona: Persona = {
-			id: crypto.randomUUID(),
-			name: 'Alter Ego Architect',
-			description: 'The nerdy coffee freak',
-			order: personas.length,
-			sections: [],
-			createdAt: now,
-			updatedAt: now
-		};
-
-		await createPersona(persona);
-
-		personas = [...personas, persona];
-	}
 </script>
 
 <svelte:head>
@@ -73,7 +56,7 @@
 				{/each}
 			</div>
 
-			<button class="add-persona" onclick={addPersona}>
+			<button class="add-persona" onclick={() => goto('/persona/new')}>
 				+ Add Persona
 			</button>
 		</main>

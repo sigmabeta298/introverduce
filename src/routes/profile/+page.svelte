@@ -11,7 +11,10 @@
 			email: '',
 			phone: '',
 			website: ''
-		}
+		},
+		setupComplete: false,
+		createdAt: Date.now(),
+		updatedAt: Date.now()
 	});
 
 	let saved = $state(false);
@@ -25,7 +28,9 @@
 	});
 
 	async function save() {
-		await saveProfile(profile);
+		profile.updatedAt = Date.now();
+
+		await saveProfile($state.snapshot(profile));
 		saved = true;
 
 		setTimeout(() => {
