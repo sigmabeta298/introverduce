@@ -8,6 +8,9 @@ export interface Profile {
 		phone?: string;
 		website?: string;
 	};
+    setupComplete: boolean;
+	createdAt: number;
+	updatedAt: number;
 }
 
 export interface PersonaSection {

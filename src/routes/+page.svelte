@@ -2,12 +2,22 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { getAllPersonas, createPersona } from '$lib/db/personas';
+	import { getProfile } from '$lib/db/profile';
 	import type { Persona } from '$lib/db/types';
 
 	let personas = $state<Persona[]>([]);
+	let loading = $state(true);
 
 	onMount(async () => {
+		const profile = await getProfile();
+
+		if (!profile || !profile.setupComplete) {
+			await goto('/onboarding/profile');
+			return;
+		}
+
 		personas = await getAllPersonas();
+		loading = false;
 	});
 
 	async function addPersona() {
@@ -38,32 +48,36 @@
 </svelte:head>
 
 <div class="app">
-	<header>
-		<h1>IntroVerDuce</h1>
-	</header>
+	{#if loading}
+		<p class="loading">Loading...</p>
+	{:else}
+		<header>
+			<h1>IntroVerDuce</h1>
+		</header>
 
-	<main>
-		<h2>My Introductions</h2>
+		<main>
+			<h2>My Introductions</h2>
 
-		<div class="personas">
-			{#each personas as persona}
-				<button
-					class="persona-card"
-					onclick={() => goto(`/persona/${persona.id}`)}
-				>
-					<span class="persona-name">{persona.name}</span>
+			<div class="personas">
+				{#each personas as persona}
+					<button
+						class="persona-card"
+						onclick={() => goto(`/persona/${persona.id}`)}
+					>
+						<span class="persona-name">{persona.name}</span>
 
-					{#if persona.description}
-						<span class="persona-description">{persona.description}</span>
-					{/if}
-				</button>
-			{/each}
-		</div>
+						{#if persona.description}
+							<span class="persona-description">{persona.description}</span>
+						{/if}
+					</button>
+				{/each}
+			</div>
 
-		<button class="add-persona" onclick={addPersona}>
-			+ Add Persona
-		</button>
-	</main>
+			<button class="add-persona" onclick={addPersona}>
+				+ Add Persona
+			</button>
+		</main>
+	{/if}
 </div>
 
 <style>
@@ -73,6 +87,12 @@
 		margin: 0 auto;
 		padding: 2rem 1.25rem;
 		box-sizing: border-box;
+	}
+
+	.loading {
+		margin: 0;
+		padding-top: 2rem;
+		text-align: center;
 	}
 
 	header {
@@ -104,7 +124,7 @@
 		padding: 1.5rem;
 		border: 1px solid var(--color-secondary);
 		border-radius: 1rem;
-		background: white;
+		background: var(--color-surface);
 		color: var(--color-text);
 		text-align: left;
 		cursor: pointer;
