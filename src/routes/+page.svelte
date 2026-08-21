@@ -19,7 +19,6 @@
 		personas = await getAllPersonas();
 		loading = false;
 	});
-
 </script>
 
 <svelte:head>
@@ -36,6 +35,22 @@
 	{:else}
 		<header>
 			<h1>IntroVerDuce</h1>
+
+			<button
+				class="icon-button"
+				aria-label="Profile"
+				title="Profile"
+				onclick={() => goto('/profile')}
+			>
+				<svg
+					viewBox="0 0 24 24"
+					fill="currentColor"
+					aria-hidden="true"
+				>
+					<circle cx="12" cy="7.5" r="3.5" />
+					<path d="M4.5 20c.6-4.1 3.2-6.5 7.5-6.5s6.9 2.4 7.5 6.5H4.5Z" />
+				</svg>
+			</button>
 		</header>
 
 		<main>
@@ -79,6 +94,9 @@
 	}
 
 	header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		margin-bottom: 3rem;
 	}
 
@@ -86,6 +104,42 @@
 		margin: 0;
 		color: var(--color-primary);
 		font-size: 1.5rem;
+	}
+	.icon-button {
+		display: grid;
+		width: 2.75rem;
+		height: 2.75rem;
+		padding: 0.6rem;
+		place-items: center;
+		border: 1px solid var(--color-secondary);
+		border-radius: 50%;
+		background: var(--color-cream);
+		color: var(--color-primary);
+		cursor: pointer;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease,
+			transform 0.15s ease;
+	}
+
+	.icon-button:hover {
+		background: var(--color-primary);
+		color: var(--color-cream);
+		transform: translateY(-1px);
+	}
+
+	.icon-button:active {
+		transform: translateY(0);
+	}
+
+	.icon-button:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 3px;
+	}
+
+	.icon-button svg {
+		width: 1.5rem;
+		height: 1.5rem;
 	}
 
 	h2 {

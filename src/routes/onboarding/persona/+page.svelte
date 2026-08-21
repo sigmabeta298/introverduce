@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { createId } from '$lib/utils/id';
 	import { createPersona } from '$lib/db/personas';
 	import { getProfile, saveProfile } from '$lib/db/profile';
 	import type { Persona, PersonaSection } from '$lib/db/types';
@@ -13,7 +14,7 @@
 		sections = [
 			...sections,
 			{
-				id: crypto.randomUUID(),
+				id: createId(),
 				title: '',
 				value: '',
 				order: sections.length
@@ -38,7 +39,7 @@
 		const now = Date.now();
 
 		const persona: Persona = {
-			id: crypto.randomUUID(),
+			id: createId(),
 			name: name.trim(),
 			description: description.trim(),
 			order: 0,

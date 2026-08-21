@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import { getProfile, saveProfile } from '$lib/db/profile';
 	import type { Profile } from '$lib/db/types';
 
@@ -54,6 +55,20 @@
 		<p class="intro">
 			Information here can be used across your different personas.
 		</p>
+		<button
+			class="icon-button"
+			aria-label="Home"
+			title="Home"
+			onclick={() => goto('/')}
+		>
+			<svg
+				viewBox="0 0 24 24"
+				fill="currentColor"
+				aria-hidden="true"
+			>
+				<path d="M3.5 11.2 12 4l8.5 7.2v8.3a1 1 0 0 1-1 1h-5v-5.5h-5V20.5h-5a1 1 0 0 1-1-1v-8.3Z" />
+			</svg>
+		</button>
 	</header>
 
 	<main>
@@ -140,7 +155,14 @@
 	}
 
 	header {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		column-gap: 1rem;
 		margin-bottom: 2rem;
+	}
+
+	header .intro {
+		grid-column: 1 / -1;
 	}
 
 	.eyebrow {
@@ -245,5 +267,42 @@
 		text-align: center;
 		color: var(--color-primary);
 		font-size: 0.85rem;
+	}
+
+	.icon-button {
+		display: grid;
+		width: 2.75rem;
+		height: 2.75rem;
+		padding: 0.6rem;
+		place-items: center;
+		border: 1px solid var(--color-secondary);
+		border-radius: 50%;
+		background: var(--color-cream);
+		color: var(--color-primary);
+		cursor: pointer;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease,
+			transform 0.15s ease;
+	}
+
+	.icon-button:hover {
+		background: var(--color-primary);
+		color: var(--color-cream);
+		transform: translateY(-1px);
+	}
+
+	.icon-button:active {
+		transform: translateY(0);
+	}
+
+	.icon-button:focus-visible {
+		outline: 2px solid var(--color-primary);
+		outline-offset: 3px;
+	}
+
+	.icon-button svg {
+		width: 1.5rem;
+		height: 1.5rem;
 	}
 </style>

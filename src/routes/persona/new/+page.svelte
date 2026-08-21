@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { createPersona } from '$lib/db/personas';
 	import type { Persona, PersonaSection } from '$lib/db/types';
+	import { createId } from '$lib/utils/id';
 
 	let name = $state('');
 	let description = $state('');
@@ -12,7 +13,7 @@
 		sections = [
 			...sections,
 			{
-				id: crypto.randomUUID(),
+				id: createId(),
 				title: '',
 				value: '',
 				order: sections.length
@@ -61,7 +62,7 @@
 		const now = Date.now();
 
 		const persona: Persona = {
-			id: crypto.randomUUID(),
+			id: createId(),
 			name: name.trim(),
 			description: description.trim(),
 			order: 0,
@@ -72,7 +73,7 @@
 
 		await createPersona(persona);
 
-		await goto(`/persona/${persona.id}`);
+		goto(`/persona/${persona.id}`);
 	}
 </script>
 
